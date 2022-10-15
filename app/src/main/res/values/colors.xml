@@ -9,4 +9,5 @@
     <color name="white">#FFFFFFFF</color>
     <color name="whiteShade">#f5f3f0</color>
     <color name="greenShade">#349d6d</color>
+    <color name="danger">#d60</color>
 </resources>

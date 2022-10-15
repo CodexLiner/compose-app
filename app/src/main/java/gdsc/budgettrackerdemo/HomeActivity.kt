@@ -1,6 +1,8 @@
 package gdsc.budgettrackerdemo
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.util.Log
@@ -16,9 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
-import androidx.compose.material.SnackbarDefaults.backgroundColor
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.MailOutline
@@ -27,18 +27,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -50,21 +45,10 @@ import gdsc.budgettrackerdemo.ui.theme.BudgetTrackerDemoTheme
 
 class HomeActivity : ComponentActivity() {
     var exp_List:MutableList<expense_details> = mutableStateListOf<expense_details>()
-
-//    val list :  MutableList<String> = mutableStateListOf<String>()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-
-
-
-
-            var value:Int=0
-            var updated_percentage by remember {
-                mutableStateOf(value)
-       }
-
-            BudgetTrackerDemoTheme {
+              BudgetTrackerDemoTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -74,6 +58,13 @@ class HomeActivity : ComponentActivity() {
                     val isOpened = remember {
                         mutableStateOf(false)
                     }
+                    val data = remember {
+                        mutableStateOf(0)
+                    }
+                    val sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
+                    val input_budget = sharedPreferences.getInt("BUDGET_AMT",0)
+
+                    data.value = update_progressBar(context , input_budget)
                     Scaffold(
                         topBar = {
                             MyTopAppBar()
@@ -81,14 +72,9 @@ class HomeActivity : ComponentActivity() {
                         floatingActionButtonPosition = FabPosition.End,
                         content = {
                             Column(modifier = Modifier.padding(top = 0.dp), verticalArrangement = Arrangement.Center
-                                , horizontalAlignment = Alignment.CenterHorizontally) {
-//                                ShowBudgetBar()
+                                ,horizontalAlignment = Alignment.CenterHorizontally) {
 
-//                                setData(){
-//                                    list.add("THIS IS SIZE"+list.size+it)
-//                                }
-//                                PastData(list)
-                                ShowBudgetBar(50)
+                                ShowBudgetBar(data.value)
                                 Spacer(modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(
@@ -99,22 +85,22 @@ class HomeActivity : ComponentActivity() {
                                     )
                                     .height(1.dp)
                                     .background(Color.Gray))
-                                var dbhelper = Dbhelper(context,null)
+                                val dbhelper = Dbhelper(context,null)
+                                exp_List.clear()
                                 exp_List.addAll(dbhelper.show_expense())
-                                setData(returnPercentage = {
-                                    value = it
-                                    Log.d("Check_per",it.toString())
+                                SetData(returnPercentage = {
+                                    data.value = it;
 
                                 }, returnSetData = {
                                     exp_List.clear()
                                     exp_List.addAll(it)
                                 })
-
-//                                      exp_List.addAll(setData())
-                                PastData(exp_List){
+                                PastData(exp_List , returnSetData = {
                                     exp_List.clear()
                                     exp_List.addAll(it)
-                                }
+                                } , returnPregress = {
+                                    data.value = it
+                                })
                             }
                         })
                     if (isOpened.value){
@@ -131,16 +117,24 @@ class HomeActivity : ComponentActivity() {
 }
 
 @Composable
-fun ShowBudgetBar(value:Int){
-    var hw = 180.dp
+fun ShowBudgetBar(value : Int){
+    val hw = 180.dp
     val context :Context = LocalContext.current
     val sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
-    var input_budget = sharedPreferences.getInt("BUDGET_AMT",0)
-
-
+    val input_budget = sharedPreferences.getInt("BUDGET_AMT",0)
     var progress_per :Int = value
+    if (value> 100) {
+        progress_per = 100;
+    }
 
-    var temp:Float = (progress_per.toFloat()/100)
+    val temp:Float = (progress_per.toFloat()/100)
+    var mColor = colorResource(id = R.color.greenShade)
+    if (progress_per in 46..65){
+        mColor = colorResource(id = R.color.danger)
+    }
+    if (progress_per >= 65){
+        mColor = Color.Red
+    }
 
     Box(modifier = Modifier
         .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
@@ -163,28 +157,26 @@ fun ShowBudgetBar(value:Int){
         } )
         val colorName = colorResource(id = R.color.greenShade)
         Canvas(modifier = Modifier.size(size = 300.dp) ){
-            drawArc(color = colorName ,
+            drawArc(color = mColor ,
                 -90f ,
                 360 * currentPercentage.value ,
                 useCenter = false ,
                 style = Stroke(30.dp.toPx() ,
                     cap = StrokeCap.Square))
         }
-        val fontsize : TextUnit = 39.sp;
         Column(horizontalAlignment = Alignment.CenterHorizontally , verticalArrangement = Arrangement.Center) {
             Text(
-                fontSize = fontsize ,
+                fontSize = 39.sp ,
                 textAlign = TextAlign.Center,
-                text = progress_per.toString()+"%",
+                text = "$progress_per%",
                 color = colorName ,
                 fontWeight = FontWeight.Bold
             )
-            val fontsize : TextUnit = 20.sp;
             Spacer(modifier = Modifier.height(5.dp))
             Text(
-                fontSize = fontsize ,
+                fontSize = 20.sp ,
                 textAlign = TextAlign.Center,
-                text = "OF\n"+input_budget.toString(),
+                text = "OF\n$input_budget",
                 color = Color.Black ,
                 fontWeight = FontWeight.Medium
             )
@@ -200,6 +192,7 @@ fun ShowBudgetBar(value:Int){
 }
 @Composable
 fun MyTopAppBar(iconAndTextColor: Color = Color.DarkGray) {
+    val activity = LocalContext.current as Activity
     val listItems = getMenuItemsList()
     val contextForToast = LocalContext.current.applicationContext
     var expanded by remember {
@@ -232,8 +225,25 @@ fun MyTopAppBar(iconAndTextColor: Color = Color.DarkGray) {
                 listItems.forEach { menuItemData ->
                     DropdownMenuItem(
                         onClick = {
-                            Toast.makeText(contextForToast, menuItemData.text, Toast.LENGTH_SHORT)
-                                .show()
+
+                            when(menuItemData.index){
+                                1-> {
+                                    val sharedPreferences : SharedPreferences = activity.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
+                                    val editor : SharedPreferences.Editor = sharedPreferences.edit()
+                                    editor.clear()
+                                    editor.apply()
+                                    Toast.makeText(activity,"Redirecting to Home",Toast.LENGTH_LONG).show()
+
+                                    activity.startActivity(Intent(activity , MainActivity::class.java))
+                                    activity.finishAffinity()
+                                }
+                                2-> {
+
+                                }
+                                3-> {
+                                    activity.finishAffinity()
+                                }
+                            }
                             expanded = false
                         },
                         enabled = true
@@ -252,7 +262,7 @@ fun MyTopAppBar(iconAndTextColor: Color = Color.DarkGray) {
     )
 }
 @Composable
-fun setData(returnSetData:(MutableList<expense_details>)->Unit,returnPercentage:(Int)->Unit){
+fun SetData(returnSetData:(MutableList<expense_details>)->Unit,returnPercentage:(Int)->Unit){
     var expenseName by remember { mutableStateOf(TextFieldValue("")) }
     var expenseAmount by remember { mutableStateOf(TextFieldValue("")) }
     var exp_list:MutableList<expense_details> = mutableListOf<expense_details>()
@@ -292,7 +302,7 @@ fun setData(returnSetData:(MutableList<expense_details>)->Unit,returnPercentage:
             Button(
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(backgroundColor = colorResource(id = R.color.greenShade)), onClick = {
-                    var db = Dbhelper(context,null)
+                    val db = Dbhelper(context,null)
                     db.insert_expense(expenseName.text,expenseAmount.text.toInt())
 
                     exp_list = db.show_expense()
@@ -301,13 +311,15 @@ fun setData(returnSetData:(MutableList<expense_details>)->Unit,returnPercentage:
 
                     Toast.makeText(context, "EXPENSE ADDED",Toast.LENGTH_LONG).show()
 
-                    var sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
+                    val sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
 
-                    var input_budget = sharedPreferences.getInt("BUDGET_AMT",0)
+                    val input_budget = sharedPreferences.getInt("BUDGET_AMT",0)
 
-                    var budget_percentage = update_progressBar(context,input_budget)
+                    val budget_percentage = update_progressBar(context,input_budget)
 
                     returnPercentage(budget_percentage)
+                    expenseName = TextFieldValue ("")
+                    expenseAmount = TextFieldValue ("");
 
                 }) {
                 Text(modifier = Modifier
@@ -320,10 +332,8 @@ fun setData(returnSetData:(MutableList<expense_details>)->Unit,returnPercentage:
 }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun PastData(exp_List:MutableList<expense_details>,returnSetData:(MutableList<expense_details>)->Unit){
+fun PastData(exp_List:MutableList<expense_details>,returnPregress : (Int) -> Unit, returnSetData:(MutableList<expense_details>)->Unit){
     val context = LocalContext.current
-
-
     Spacer(modifier = Modifier
         .size(10.dp))
     Column(modifier = Modifier
@@ -333,8 +343,6 @@ fun PastData(exp_List:MutableList<expense_details>,returnSetData:(MutableList<ex
         Text(text = "Recents" , fontSize = fontsize , fontWeight = FontWeight(weight = 600) )
         //for space between recent and list
         Spacer(modifier = Modifier.size(10.dp))
-
-
 
         LazyColumn(modifier = Modifier.padding(10.dp , bottom = 20.dp), content = {
             items(count = exp_List.size){
@@ -354,13 +362,17 @@ fun PastData(exp_List:MutableList<expense_details>,returnSetData:(MutableList<ex
                             Toast
                                 .makeText(
                                     context,
-                                    "yay! Deleted" + exp_name_delete,
+                                    "Expense Removed" + exp_name_delete,
                                     Toast.LENGTH_SHORT
                                 )
                                 .show()
                             val db = Dbhelper(context, null)
                             db.delete_expense(exp_name_delete)
                             returnSetData(db.show_expense())
+                            val sharedPreferences: SharedPreferences =
+                                context.getSharedPreferences("BUDGET", Context.MODE_PRIVATE)
+                            val input_budget = sharedPreferences.getInt("BUDGET_AMT", 0)
+                            returnPregress(update_progressBar(context, input_budget))
 
                         },
                     )
@@ -383,22 +395,19 @@ fun PastData(exp_List:MutableList<expense_details>,returnSetData:(MutableList<ex
 
 fun getMenuItemsList(): ArrayList<MenuItemData> {
     val listItems = ArrayList<MenuItemData>()
-    listItems.add(MenuItemData(text = "RESET BUDGET", icon = Icons.Outlined.MailOutline))
-    listItems.add(MenuItemData(text = "MEET DEV's", icon = Icons.Outlined.Add))
-    listItems.add(MenuItemData(text = "EXIT", icon = Icons.Outlined.Warning))
+    listItems.add(MenuItemData(text = "RESET BUDGET", icon = Icons.Outlined.MailOutline  , 1))
+    listItems.add(MenuItemData(text = "MEET DEV's", icon = Icons.Outlined.Add , 2))
+    listItems.add(MenuItemData(text = "EXIT", icon = Icons.Outlined.Warning , 3))
     return listItems
 }
 
 fun update_progressBar(context: Context,budget: Int):Int{
 
-    var db= Dbhelper(context, null)
+    val db= Dbhelper(context, null)
 
-    var total_exp_amt = db.total_expense_amt()
+    val total_exp_amt = db.total_expense_amt()
 
-    var percentage:Int = ((total_exp_amt.toFloat()/budget)*100).toInt()
-//        ((total_exp_amt.toFloat()/100)*budget)
-
-    Log.d("PERCENTAGE_CHECK","RUNNING")
+    val percentage:Int = ((total_exp_amt.toFloat()/budget)*100).toInt()
 
     return percentage
 }
@@ -407,4 +416,4 @@ fun update_progressBar(context: Context,budget: Int):Int{
 
 
 
-data class MenuItemData(val text: String, val icon: ImageVector)
+data class MenuItemData(val text: String, val icon: ImageVector , val index : Int)

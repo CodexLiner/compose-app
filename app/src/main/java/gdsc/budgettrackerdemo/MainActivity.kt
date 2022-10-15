@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
                         val sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET",Context.MODE_PRIVATE)
                         if(sharedPreferences.getInt("BUDGET_AMT",0) == 0)
                         {
-                            Toast.makeText(LocalContext.current,"okay",Toast.LENGTH_LONG).show()
+//                          Toast.makeText(LocalContext.current,"okay",Toast.LENGTH_LONG).show()
                             WelcomeWidget()
                             SetBudget();
                         }
@@ -60,8 +62,6 @@ class MainActivity : ComponentActivity() {
                             context.startActivity(intent)
                             activity?.finish()
                         }
-
-
                     }
                 }
             }
@@ -71,11 +71,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WelcomeWidget(){
     val painter = painterResource(id = R.drawable.logo);
-    Column(modifier = Modifier.padding(30.dp) , verticalArrangement = Arrangement.Top , horizontalAlignment = Alignment.CenterHorizontally) {
+    Image(painter = painter, contentDescription = "logo")
+    Spacer(modifier = Modifier.height(5.dp))
+    Column(modifier = Modifier.padding(0.dp) , verticalArrangement = Arrangement.Top , horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "WELCOME\nSet Budget to Continue" , modifier = Modifier.padding(10.dp) ,
-        fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace , fontSize = 25.sp , textAlign = TextAlign.Center
+        fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace , lineHeight = 40.sp, fontSize = 25.sp , textAlign = TextAlign.Center
         )
-        Image(painter = painter, contentDescription = "logo")
     }
 }
 @Composable
@@ -100,21 +101,22 @@ fun SetBudget(modifier: Modifier = Modifier){
                 text = it
             }
         )
-        Spacer(modifier = modifier.padding(12.dp))
+        Spacer(modifier = modifier.padding(5.dp))
 
         val context = LocalContext.current;
 
         //Creating shared preferences
 
-        var sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET", Context.MODE_PRIVATE)
-        var editor : SharedPreferences.Editor = sharedPreferences.edit()
+        val sharedPreferences : SharedPreferences = context.getSharedPreferences("BUDGET", Context.MODE_PRIVATE)
+        val editor : SharedPreferences.Editor = sharedPreferences.edit()
 
-        Button(onClick = {
-            if (!text.equals(null) && text.toString().isNotEmpty()){
-
+        Button(shape = RoundedCornerShape(5.dp), colors = ButtonDefaults.buttonColors(backgroundColor = colorResource(id = R.color.greenShade)), onClick = {
+            if (!text.equals(null) && !(text.toString() == "")){
                 editor.putInt("BUDGET_AMT",text.text.toInt())
                 editor.apply()
                 context.startActivity(Intent(context , HomeActivity::class.java))
+            }else{
+                Toast.makeText(context,"Please Enter Amount",Toast.LENGTH_LONG).show()
             }
         }) {
             Row(modifier = Modifier
