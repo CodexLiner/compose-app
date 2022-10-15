@@ -238,7 +238,7 @@ fun MyTopAppBar(iconAndTextColor: Color = Color.DarkGray) {
                                     activity.finishAffinity()
                                 }
                                 2-> {
-
+                                    activity.startActivity(Intent(activity , Devs::class.java))
                                 }
                                 3-> {
                                     activity.finishAffinity()
